@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Livro de Estoque</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper: #F6F1E7;
+    --paper-dim: #EDE5D4;
+    --ink: #1E2A2F;
+    --ink-soft: #55625F;
+    --brass: #B8863B;
+    --brass-deep: #8F6624;
+    --teal: #2F6E6E;
+    --coral: #C1502E;
+    --line: rgba(30,42,47,0.14);
+    --card: #FFFDF8;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{margin:0; padding:0; background:var(--paper); color:var(--ink); font-family:'Inter',sans-serif;}
+  body{
+    min-height:100vh;
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(30,42,47,0.06) 1px, transparent 0);
+    background-size: 16px 16px;
+    padding-bottom: 92px;
+  }
+  .app{max-width:480px; margin:0 auto; padding: 0 16px;}
+  .num{font-family:'JetBrains Mono', monospace; font-variant-numeric: tabular-nums;}
+
+  /* ---- Header ---- */
+  header.top{
+    padding: 22px 4px 14px;
+    display:flex; align-items:baseline; justify-content:space-between;
+  }
+  header.top h1{
+    font-family:'Fraunces', serif; font-weight:700; font-size:26px; letter-spacing:-0.01em; margin:0;
+  }
+  header.top .sub{font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-soft); margin-top:2px;}
+
+  /* ---- Exchange rate ticker ---- */
+  .ticker{
+    background: var(--ink); color: var(--paper);
+    border-radius: 10px;
+    padding: 12px 14px;
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    margin-bottom:18px;
+    box-shadow: 0 4px 14px rgba(30,42,47,0.18);
+  }
+  .ticker .left{display:flex; align-items:center; gap:10px;}
+  .ticker .dot{width:7px; height:7px; border-radius:50%; background:#6FCF97; box-shadow:0 0 0 3px rgba(111,207,151,0.25);}
+  .ticker .dot.stale{background:var(--coral); box-shadow:0 0 0 3px rgba(193,80,46,0.25);}
+  .ticker .label{font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:#B9C4C0;}
+  .ticker .rate{font-family:'JetBrains Mono', monospace; font-size:19px; font-weight:700;}
+  .ticker button{
+    background:transparent; border:1px solid rgba(246,241,231,0.35); color:var(--paper);
+    border-radius:7px; padding:6px 10px; font-size:11px; font-family:inherit; cursor:pointer;
+  }
+  .ticker .manual{
+    display:flex; align-items:center; gap:6px; margin-top:8px;
+  }
+  .ticker input[type=number]{
+    width:78px; background:rgba(246,241,231,0.1); border:1px solid rgba(246,241,231,0.3);
+    color:var(--paper); border-radius:6px; padding:5px 7px; font-family:'JetBrains Mono',monospace; font-size:13px;
+  }
+  .ticker-wrap{display:flex; flex-direction:column;}
+
+  /* ---- Tabs content ---- */
+  .view{display:none; animation: fade .25s ease;}
+  .view.active{display:block;}
+  @keyframes fade{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;}}
+
+  h2.section{
+    font-family:'Fraunces', serif; font-size:16px; font-weight:600; margin: 4px 0 10px; color:var(--ink);
+  }
+
+  /* ---- Summary strip ---- */
+  .summary{display:flex; gap:10px; margin-bottom:16px;}
+  .summary .box{
+    flex:1; background:var(--card); border:1px solid var(--line); border-radius:10px; padding:10px 12px;
+  }
+  .summary .box .k{font-size:9.5px; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-soft);}
+  .summary .box .v{font-family:'JetBrains Mono',monospace; font-size:16px; font-weight:700; margin-top:2px;}
+
+  /* ---- Item card (receipt style) ---- */
+  .item{
+    position:relative;
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:13px 14px;
+    margin-bottom:10px;
+  }
+  .item::before{
+    content:"";
+    position:absolute; left:14px; right:14px; bottom:-5px; height:1px;
+    background-image: linear-gradient(to right, var(--line) 50%, transparent 0);
+    background-size: 8px 1px;
+    display:none;
+  }
+  .item-row{display:flex; justify-content:space-between; align-items:flex-start; gap:10px;}
+  .item-name{font-weight:600; font-size:14.5px; line-height:1.3;}
+  .item-qty{font-size:11px; color:var(--ink-soft); margin-top:2px;}
+  .item-figures{display:flex; gap:16px; margin-top:10px;}
+  .fig{display:flex; flex-direction:column;}
+  .fig .k{font-size:9.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-soft);}
+  .fig .v{font-family:'JetBrains Mono',monospace; font-size:13.5px; font-weight:700; margin-top:1px;}
+  .fig .v.sale{color:var(--teal);}
+  .item-actions{display:flex; gap:6px;}
+  .icon-btn{
+    border:none; background:var(--paper-dim); width:28px; height:28px; border-radius:7px;
+    display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--ink);
+  }
+  .icon-btn.del{color:var(--coral);}
+  .margin-tag{
+    font-size:10px; font-family:'JetBrains Mono',monospace; background:rgba(184,134,59,0.14); color:var(--brass-deep);
+    padding:2px 7px; border-radius:20px; align-self:flex-start;
+  }
+
+  .empty{
+    text-align:center; padding: 40px 20px; color:var(--ink-soft);
+  }
+  .empty .stamp{
+    font-family:'Fraunces',serif; font-size:14px; border:1.5px dashed var(--ink-soft); border-radius:8px;
+    display:inline-block; padding:10px 16px; transform:rotate(-2deg); margin-bottom:10px;
+  }
+
+  /* ---- Forms ---- */
+  label{font-size:11px; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-soft); display:block; margin-bottom:5px;}
+  .field{margin-bottom:14px;}
+  input[type=text], input[type=number]{
+    width:100%; padding:11px 12px; border-radius:9px; border:1px solid var(--line);
+    background:var(--card); font-family:'Inter',sans-serif; font-size:14.5px; color:var(--ink);
+  }
+  input[type=text]:focus, input[type=number]:focus{outline:2px solid var(--brass); outline-offset:1px;}
+  .row2{display:flex; gap:10px;}
+  .row2 .field{flex:1;}
+  .currency-toggle{display:flex; border:1px solid var(--line); border-radius:9px; overflow:hidden;}
+  .currency-toggle button{
+    flex:1; padding:9px; border:none; background:var(--card); font-family:'JetBrains Mono',monospace;
+    font-size:12.5px; cursor:pointer; color:var(--ink-soft);
+  }
+  .currency-toggle button.on{background:var(--ink); color:var(--paper); font-weight:700;}
+
+  .preview-box{
+    background:var(--card); border:1px dashed var(--line); border-radius:10px; padding:12px; margin-bottom:14px;
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  .preview-box .k{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft);}
+  .preview-box .v{font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:700; color:var(--teal);}
+
+  button.primary{
+    width:100%; padding:13px; border:none; border-radius:10px; background:var(--brass);
+    color:#fff; font-family:'Inter',sans-serif; font-weight:700; font-size:14.5px; cursor:pointer;
+    box-shadow: 0 3px 0 var(--brass-deep);
+  }
+  button.primary:active{transform:translateY(2px); box-shadow:none;}
+  button.primary:disabled{background:#C9BFA9; box-shadow:none; cursor:default;}
+  button.ghost{
+    width:100%; padding:12px; border:1px solid var(--line); border-radius:10px; background:transparent;
+    color:var(--ink); font-family:'Inter',sans-serif; font-weight:600; font-size:14px; cursor:pointer; margin-top:8px;
+  }
+
+  /* ---- Scan tab ---- */
+  .scan-drop{
+    border:1.5px dashed var(--brass); border-radius:14px; padding:28px 16px; text-align:center;
+    background: rgba(184,134,59,0.06); margin-bottom:16px;
+  }
+  .scan-drop .icon{margin-bottom:8px;}
+  .scan-drop p{font-size:13px; color:var(--ink-soft); margin:4px 0 14px;}
+  .scan-preview{
+    position:relative; border-radius:12px; overflow:hidden; margin-bottom:14px; border:1px solid var(--line);
+  }
+  .scan-preview img{display:block; width:100%; max-height:260px; object-fit:cover;}
+  .scan-preview .stamp-mark{
+    position:absolute; top:10px; right:10px; font-family:'Fraunces',serif; font-weight:700; font-size:12px;
+    color:var(--teal); border:2px solid var(--teal); border-radius:6px; padding:4px 9px; transform:rotate(-8deg);
+    background:rgba(255,253,248,0.85);
+  }
+  .status-line{font-size:12.5px; color:var(--ink-soft); text-align:center; margin: 10px 0;}
+  .status-line.error{color:var(--coral);}
+  .spinner{
+    width:18px; height:18px; border:2.5px solid var(--line); border-top-color:var(--brass); border-radius:50%;
+    display:inline-block; animation:spin .7s linear infinite; vertical-align:middle; margin-right:6px;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .extracted-item{
+    background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:10px;
+  }
+  .extracted-item .top{display:flex; align-items:center; gap:8px; margin-bottom:10px;}
+  .extracted-item input[type=checkbox]{width:17px; height:17px; accent-color:var(--brass);}
+  .extracted-item .nm{font-weight:600; font-size:13.5px; flex:1;}
+  .extracted-item .grid{display:grid; grid-template-columns: 1fr 1fr 1fr; gap:8px;}
+  .extracted-item .grid .field{margin-bottom:0;}
+  .extracted-item label{font-size:9px; margin-bottom:3px;}
+  .extracted-item input{padding:8px; font-size:12.5px;}
+  .extracted-summary{
+    font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--ink-soft); text-align:right; margin-top:4px;
+  }
+
+  /* ---- Bottom nav ---- */
+  nav.tabbar{
+    position:fixed; bottom:0; left:0; right:0;
+    background: rgba(246,241,231,0.92); backdrop-filter: blur(10px);
+    border-top:1px solid var(--line);
+    padding: 8px 14px calc(10px + env(safe-area-inset-bottom));
+    display:flex; justify-content:space-around; z-index:10;
+  }
+  nav.tabbar button{
+    background:none; border:none; display:flex; flex-direction:column; align-items:center; gap:3px;
+    color:var(--ink-soft); font-family:'Inter',sans-serif; font-size:10.5px; padding:4px 10px; cursor:pointer;
+  }
+  nav.tabbar button.active{color:var(--brass-deep); font-weight:700;}
+  nav.tabbar svg{width:21px; height:21px;}
+
+  ::selection{background:var(--brass); color:#fff;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="top">
+    <div>
+      <h1>Livro de Estoque</h1>
+      <div class="sub">Compra em USD · Venda em BRL</div>
+    </div>
+  </header>
+
+  <div class="ticker-wrap">
+    <div class="ticker">
+      <div class="left">
+        <span class="dot" id="rateDot"></span>
+        <div>
+          <div class="label">Cotação USD → BRL</div>
+          <div class="rate num" id="rateDisplay">--</div>
+        </div>
+      </div>
+      <button id="refreshRateBtn" type="button">Atualizar</button>
+    </div>
+    <div class="manual" style="margin-bottom:16px;">
+      <label style="margin:0; font-size:10px;">Ajustar manualmente:</label>
+      <input type="number" id="manualRate" step="0.01" placeholder="ex: 5.42">
+      <button class="icon-btn" id="applyManualRate" type="button" style="width:auto; padding:0 10px; font-size:11px;">OK</button>
+    </div>
+  </div>
+
+  <!-- ===================== ESTOQUE ===================== -->
+  <section class="view active" id="view-estoque">
+    <div class="summary">
+      <div class="box">
+        <div class="k">Itens</div>
+        <div class="v" id="sumItens">0</div>
+      </div>
+      <div class="box">
+        <div class="k">Investido</div>
+        <div class="v" id="sumInvestido">R$ 0</div>
+      </div>
+      <div class="box">
+        <div class="k">Venda projetada</div>
+        <div class="v" id="sumVenda">R$ 0</div>
+      </div>
+    </div>
+    <h2 class="section">Mercadorias</h2>
+    <div id="inventoryList"></div>
+  </section>
+
+  <!-- ===================== ADICIONAR ===================== -->
+  <section class="view" id="view-adicionar">
+    <h2 class="section">Nova entrada manual</h2>
+    <div class="field">
+      <label>Nome da mercadoria</label>
+      <input type="text" id="f_nome" placeholder="ex: Fone de ouvido BT-200">
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>Quantidade</label>
+        <input type="number" id="f_qtd" min="1" value="1">
+      </div>
+      <div class="field">
+        <label>Moeda do custo</label>
+        <div class="currency-toggle">
+          <button type="button" id="btnUSD" class="on">USD</button>
+          <button type="button" id="btnBRL">BRL</button>
+        </div>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>Custo unitário</label>
+        <input type="number" id="f_custo" step="0.01" placeholder="0.00">
+      </div>
+      <div class="field">
+        <label>Margem de lucro (%)</label>
+        <input type="number" id="f_margem" step="1" value="40">
+      </div>
+    </div>
+    <div class="preview-box">
+      <div>
+        <div class="k">Preço de venda (un.)</div>
+      </div>
+      <div class="v num" id="f_preview">R$ 0,00</div>
+    </div>
+    <button class="primary" id="addManualBtn" type="button">Adicionar ao estoque</button>
+  </section>
+
+  <!-- ===================== ESCANEAR ===================== -->
+  <section class="view" id="view-escanear">
+    <h2 class="section">Dar entrada por nota fiscal</h2>
+    <div class="scan-drop" id="scanDrop">
+      <div class="icon">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#B8863B" stroke-width="1.6"><path d="M4 7h2l1-2h10l1 2h2v13H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
+      </div>
+      <p>Fotografe a nota de compra em dólar.<br>A IA vai ler os itens e preços para você.</p>
+      <input type="file" accept="image/*" capture="environment" id="notaInput" style="display:none;">
+      <button class="primary" type="button" id="openCameraBtn">Fotografar nota</button>
+      <button class="ghost" type="button" id="openGalleryBtn">Escolher da galeria</button>
+    </div>
+
+    <div id="scanPreviewWrap"></div>
+    <div id="scanStatus"></div>
+    <div id="extractedList"></div>
+    <div id="scanActions"></div>
+  </section>
+
+</div>
+
+<nav class="tabbar">
+  <button data-tab="estoque" class="active" type="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-6 9 6v10a1 1 0 01-1 1H4a1 1 0 01-1-1z"/><path d="M9 21V12h6v9"/></svg>
+    Estoque
+  </button>
+  <button data-tab="adicionar" type="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>
+    Adicionar
+  </button>
+  <button data-tab="escanear" type="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7V5a1 1 0 011-1h2M4 17v2a1 1 0 001 1h2M20 7V5a1 1 0 00-1-1h-2M20 17v2a1 1 0 01-1 1h-2"/><path d="M4 12h16"/></svg>
+    Escanear
+  </button>
+</nav>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- state ----------
+  let inventory = [];
+  let exchangeRate = null;
+  let costCurrency = 'USD';
+  let scannedImage = null; // {base64, mediaType}
+  let extractedItems = [];
+
+  // ---------- helpers ----------
+  const $ = (id) => document.getElementById(id);
+  const fmtBRL = (n) => 'R$ ' + (Number(n)||0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  const uid = () => 'it_' + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+
+  async function storageGet(key, fallback){
+    try{
+      const r = await window.storage.get(key, false);
+      return r ? JSON.parse(r.value) : fallback;
+    }catch(e){ return fallback; }
+  }
+  async function storageSet(key, value){
+    try{ await window.storage.set(key, JSON.stringify(value), false); }catch(e){ console.error('storage set failed', e); }
+  }
+
+  // ---------- init ----------
+  async function init(){
+    inventory = await storageGet('inventory', []);
+    const savedRate = await storageGet('exchangeRate', null);
+    if (savedRate) { exchangeRate = savedRate.value; updateRateUI(savedRate.stale !== false); }
+    renderInventory();
+    fetchRate();
+    bindEvents();
+  }
+
+  // ---------- exchange rate ----------
+  async function fetchRate(){
+    $('rateDisplay').textContent = 'buscando...';
+    try{
+      const res = await fetch('https://open.er-api.com/v6/latest/USD');
+      const data = await res.json();
+      if(data && data.rates && data.rates.BRL){
+        exchangeRate = data.rates.BRL;
+        updateRateUI(false);
+        await storageSet('exchangeRate', {value: exchangeRate, stale:false, ts: Date.now()});
+        return;
+      }
+      throw new Error('sem BRL na resposta');
+    }catch(e){
+      if(exchangeRate){
+        updateRateUI(true);
+      } else {
+        $('rateDisplay').textContent = 'indisponível';
+        $('rateDot').classList.add('stale');
+      }
+    }
+  }
+  function updateRateUI(stale){
+    $('rateDisplay').textContent = exchangeRate ? ('R$ ' + exchangeRate.toFixed(4)) : '--';
+    $('rateDot').classList.toggle('stale', !!stale);
+    $('manualRate').placeholder = exchangeRate ? exchangeRate.toFixed(2) : 'ex: 5.42';
+    updatePreview();
+  }
+
+  // ---------- tabs ----------
+  function bindEvents(){
+    document.querySelectorAll('nav.tabbar button').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        document.querySelectorAll('nav.tabbar button').forEach(b=>b.classList.remove('active'));
+        document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+        btn.classList.add('active');
+        $('view-' + btn.dataset.tab).classList.add('active');
+      });
+    });
+
+    $('refreshRateBtn').addEventListener('click', fetchRate);
+    $('applyManualRate').addEventListener('click', async ()=>{
+      const v = parseFloat($('manualRate').value);
+      if(v && v > 0){
+        exchangeRate = v;
+        updateRateUI(false);
+        await storageSet('exchangeRate', {value: exchangeRate, stale:false, ts: Date.now()});
+        $('manualRate').value = '';
+      }
+    });
+
+    $('btnUSD').addEventListener('click', ()=>setCurrency('USD'));
+    $('btnBRL').addEventListener('click', ()=>setCurrency('BRL'));
+    ['f_qtd','f_custo','f_margem'].forEach(id=> $(id).addEventListener('input', updatePreview));
+    $('addManualBtn').addEventListener('click', addManualItem);
+
+    $('openCameraBtn').addEventListener('click', ()=>{ $('notaInput').setAttribute('capture','environment'); $('notaInput').click(); });
+    $('openGalleryBtn').addEventListener('click', ()=>{ $('notaInput').removeAttribute('capture'); $('notaInput').click(); });
+    $('notaInput').addEventListener('change', onNotaSelected);
+  }
+
+  function setCurrency(c){
+    costCurrency = c;
+    $('btnUSD').classList.toggle('on', c==='USD');
+    $('btnBRL').classList.toggle('on', c==='BRL');
+    updatePreview();
+  }
+
+  function updatePreview(){
+    const custo = parseFloat($('f_custo').value) || 0;
+    const margem = parseFloat($('f_margem').value) || 0;
+    const custoBRL = costCurrency === 'USD' ? custo * (exchangeRate||0) : custo;
+    const venda = custoBRL * (1 + margem/100);
+    $('f_preview').textContent = fmtBRL(venda);
+  }
+
+  // ---------- inventory CRUD ----------
+  async function addManualItem(){
+    const nome = $('f_nome').value.trim();
+    const qtd = parseInt($('f_qtd').value) || 1;
+    const custo = parseFloat($('f_custo').value);
+    const margem = parseFloat($('f_margem').value) || 0;
+    if(!nome){ $('f_nome').focus(); return; }
+    if(!custo || custo <= 0){ $('f_custo').focus(); return; }
+    if(costCurrency === 'USD' && !exchangeRate){
+      alert('Cotação do dólar indisponível. Informe a cotação manualmente no topo da tela antes de adicionar.');
+      return;
+    }
+    const custoBRLUnit = costCurrency === 'USD' ? custo * exchangeRate : custo;
+    const item = {
+      id: uid(),
+      nome,
+      quantidade: qtd,
+      moedaOriginal: costCurrency,
+      custoOriginalUnit: custo,
+      cotacaoUsada: costCurrency === 'USD' ? exchangeRate : null,
+      custoBRLUnit,
+      margem,
+      precoVendaUnit: custoBRLUnit * (1 + margem/100),
+      dataEntrada: new Date().toISOString()
+    };
+    inventory.unshift(item);
+    await storageSet('inventory', inventory);
+    renderInventory();
+    $('f_nome').value=''; $('f_qtd').value='1'; $('f_custo').value=''; $('f_margem').value='40';
+    updatePreview();
+    document.querySelector('[data-tab="estoque"]').click();
+  }
+
+  async function deleteItem(id){
+    inventory = inventory.filter(i=>i.id!==id);
+    await storageSet('inventory', inventory);
+    renderInventory();
+  }
+
+  async function editMargin(id){
+    const item = inventory.find(i=>i.id===id);
+    if(!item) return;
+    const novo = prompt('Nova margem de lucro (%) para "' + item.nome + '":', item.margem);
+    if(novo === null) return;
+    const m = parseFloat(novo);
+    if(isNaN(m)) return;
+    item.margem = m;
+    item.precoVendaUnit = item.custoBRLUnit * (1 + m/100);
+    await storageSet('inventory', inventory);
+    renderInventory();
+  }
+
+  function renderInventory(){
+    const list = $('inventoryList');
+    if(inventory.length === 0){
+      list.innerHTML = '<div class="empty"><div class="stamp">estoque vazio</div><div>Adicione mercadorias manualmente ou escaneando uma nota.</div></div>';
+    } else {
+      list.innerHTML = inventory.map(item => `
+        <div class="item">
+          <div class="item-row">
+            <div>
+              <div class="item-name">${escapeHTML(item.nome)}</div>
+              <div class="item-qty">${item.quantidade} un. · ${item.moedaOriginal === 'USD' ? ('US$ ' + item.custoOriginalUnit.toFixed(2) + ' /un · câmbio ' + item.cotacaoUsada.toFixed(2)) : ('custo direto em BRL')}</div>
+            </div>
+            <div class="item-actions">
+              <button class="icon-btn" onclick="AppEstoque.editMargin('${item.id}')" title="Editar margem">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>
+              </button>
+              <button class="icon-btn del" onclick="AppEstoque.deleteItem('${item.id}')" title="Remover">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="item-figures">
+            <div class="fig">
+              <div class="k">Custo un.</div>
+              <div class="v">${fmtBRL(item.custoBRLUnit)}</div>
+            </div>
+            <div class="fig">
+              <div class="k">Venda un.</div>
+              <div class="v sale">${fmtBRL(item.precoVendaUnit)}</div>
+            </div>
+            <div class="fig">
+              <div class="k">Margem</div>
+              <div class="v">${item.margem}%</div>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+    const totalItens = inventory.reduce((s,i)=>s+i.quantidade,0);
+    const totalInvestido = inventory.reduce((s,i)=>s+i.custoBRLUnit*i.quantidade,0);
+    const totalVenda = inventory.reduce((s,i)=>s+i.precoVendaUnit*i.quantidade,0);
+    $('sumItens').textContent = totalItens;
+    $('sumInvestido').textContent = fmtBRL(totalInvestido);
+    $('sumVenda').textContent = fmtBRL(totalVenda);
+  }
+
+  function escapeHTML(s){
+    return s.replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  // ---------- scanning ----------
+  function onNotaSelected(e){
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      const mediaType = file.type || 'image/jpeg';
+      const base64 = dataUrl.split(',')[1];
+      scannedImage = {base64, mediaType};
+      $('scanPreviewWrap').innerHTML = `
+        <div class="scan-preview">
+          <img src="${dataUrl}" alt="Nota fotografada">
+        </div>`;
+      $('extractedList').innerHTML = '';
+      $('scanActions').innerHTML = `<button class="primary" id="extractBtn" type="button">Extrair itens com IA</button>`;
+      $('extractBtn').addEventListener('click', runExtraction);
+      $('scanStatus').innerHTML = '';
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function runExtraction(){
+    if(!scannedImage) return;
+    if(!exchangeRate){
+      $('scanStatus').innerHTML = '<div class="status-line error">Cotação do dólar indisponível. Informe manualmente no topo da tela antes de continuar.</div>';
+      return;
+    }
+    $('scanActions').innerHTML = '';
+    $('scanStatus').innerHTML = '<div class="status-line"><span class="spinner"></span>Lendo a nota...</div>';
+    try{
+      const promptText = "Você é um assistente que extrai itens de notas fiscais ou faturas de compra em dolares americanos (USD). Analise a imagem enviada e devolva APENAS um JSON valido, sem markdown, sem crases, sem nenhum texto fora do JSON, no seguinte formato exato: {\"items\":[{\"nome\":\"string curta do produto\",\"quantidade\":numero_inteiro,\"preco_unitario_usd\":numero_decimal}]}. Se a nota tiver preco total da linha em vez de preco unitario, calcule o preco unitario dividindo pelo total. Se algum campo nao estiver legivel, faca sua melhor estimativa. Nao inclua nenhuma explicacao, apenas o JSON.";
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-6",
+          max_tokens: 1500,
+          messages: [{
+            role: "user",
+            content: [
+              { type: "image", source: { type: "base64", media_type: scannedImage.mediaType, data: scannedImage.base64 } },
+              { type: "text", text: promptText }
+            ]
+          }]
+        })
+      });
+      const data = await response.json();
+      const textBlock = (data.content || []).map(b => b.text || '').join('');
+      const clean = textBlock.replace(/```json/g,'').replace(/```/g,'').trim();
+      const parsed = JSON.parse(clean);
+      if(!parsed.items || !parsed.items.length){
+        throw new Error('nenhum item encontrado');
+      }
+      extractedItems = parsed.items.map(it => ({
+        id: uid(),
+        nome: it.nome || 'Item sem nome',
+        quantidade: Math.max(1, parseInt(it.quantidade) || 1),
+        precoUnitUSD: parseFloat(it.preco_unitario_usd) || 0,
+        margem: 40,
+        incluir: true
+      }));
+      $('scanStatus').innerHTML = '<div class="status-line">' + extractedItems.length + ' item(ns) encontrado(s). Revise antes de adicionar.</div>';
+      renderExtracted();
+    }catch(err){
+      $('scanStatus').innerHTML = '<div class="status-line error">Não foi possível ler a nota automaticamente. Tente uma foto mais nítida, com boa luz, ou adicione manualmente na aba "Adicionar".</div>';
+      $('scanActions').innerHTML = `<button class="ghost" id="retryBtn" type="button">Tentar novamente</button>`;
+      $('retryBtn').addEventListener('click', runExtraction);
+    }
+  }
+
+  function renderExtracted(){
+    const wrap = $('extractedList');
+    wrap.innerHTML = extractedItems.map(it => `
+      <div class="extracted-item" data-id="${it.id}">
+        <div class="top">
+          <input type="checkbox" ${it.incluir ? 'checked':''} onchange="AppEstoque.toggleExtracted('${it.id}', this.checked)">
+          <div class="nm">${escapeHTML(it.nome)}</div>
+        </div>
+        <div class="grid">
+          <div class="field">
+            <label>Qtd.</label>
+            <input type="number" min="1" value="${it.quantidade}" onchange="AppEstoque.updateExtracted('${it.id}','quantidade',this.value)">
+          </div>
+          <div class="field">
+            <label>US$ un.</label>
+            <input type="number" step="0.01" value="${it.precoUnitUSD}" onchange="AppEstoque.updateExtracted('${it.id}','precoUnitUSD',this.value)">
+          </div>
+          <div class="field">
+            <label>Margem %</label>
+            <input type="number" step="1" value="${it.margem}" onchange="AppEstoque.updateExtracted('${it.id}','margem',this.value)">
+          </div>
+        </div>
+        <div class="extracted-summary">${fmtBRL(it.precoUnitUSD*exchangeRate)} custo · venda ${fmtBRL(it.precoUnitUSD*exchangeRate*(1+it.margem/100))}</div>
+      </div>
+    `).join('');
+    $('scanActions').innerHTML = `<button class="primary" id="addAllBtn" type="button">Adicionar itens selecionados ao estoque</button>`;
+    $('addAllBtn').addEventListener('click', addExtractedToInventory);
+  }
+
+  function toggleExtracted(id, checked){
+    const it = extractedItems.find(x=>x.id===id);
+    if(it) it.incluir = checked;
+  }
+  function updateExtracted(id, field, value){
+    const it = extractedItems.find(x=>x.id===id);
+    if(!it) return;
+    it[field] = field === 'quantidade' ? (parseInt(value)||1) : parseFloat(value)||0;
+    renderExtracted();
+  }
+
+  async function addExtractedToInventory(){
+    const selecionados = extractedItems.filter(i=>i.incluir);
+    if(selecionados.length === 0) return;
+    selecionados.forEach(it => {
+      const custoBRLUnit = it.precoUnitUSD * exchangeRate;
+      inventory.unshift({
+        id: uid(),
+        nome: it.nome,
+        quantidade: it.quantidade,
+        moedaOriginal: 'USD',
+        custoOriginalUnit: it.precoUnitUSD,
+        cotacaoUsada: exchangeRate,
+        custoBRLUnit,
+        margem: it.margem,
+        precoVendaUnit: custoBRLUnit * (1 + it.margem/100),
+        dataEntrada: new Date().toISOString()
+      });
+    });
+    await storageSet('inventory', inventory);
+    renderInventory();
+    // reset scan tab
+    scannedImage = null; extractedItems = [];
+    $('scanPreviewWrap').innerHTML = '';
+    $('extractedList').innerHTML = '';
+    $('scanActions').innerHTML = '';
+    $('scanStatus').innerHTML = '<div class="status-line">' + selecionados.length + ' item(ns) adicionado(s) ao estoque.</div>';
+    document.querySelector('[data-tab="estoque"]').click();
+  }
+
+  // expose for inline handlers
+  window.AppEstoque = { deleteItem, editMargin, toggleExtracted, updateExtracted };
+
+  init();
+})();
+</script>
+</body>
+</html>
